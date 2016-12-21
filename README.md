@@ -37,7 +37,7 @@ You can initialize your backend instances using the
 
 ## Configuration
 
-- `BEANSTALK_CONNECTION_URI`: Address of the Beanstalkd instance, `btq://host[:port]`.
+- `BACKEND_CONNECTION_URI`: Address of the Beanstalkd instance, `btq://host[:port]`.
 
 ## Example
 
