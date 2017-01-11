@@ -19,12 +19,10 @@ class Backend:
         self.queues = {}
         self.lock = Lock()
         self.stopped = True
-        self.app = None
         if app is not None:
             self.init_app(app)
 
     def init_app(self, app):
-        self.app = app
         app.extensions['backend'] = self
         match = re.match(
             r'^btq://([-.\w]+)(?::(\d+))?$',
@@ -76,7 +74,7 @@ class Backend:
         return decorator
 
     def run(self, queue_name):
-        self.app.logger.info('Starting backend %s', queue_name)
+        current_app.logger.info('Starting backend %s', queue_name)
         for callback in self.before_first_task_callbacks[queue_name]:
             callback()
         handler = self.handlers[queue_name]
@@ -91,7 +89,7 @@ class Backend:
                 continue
             handler(task)
             queue.task_done()
-        self.app.logger.info('Terminating backend %s', queue_name)
+        current_app.logger.info('Terminating backend %s', queue_name)
 
     def stop(self):
         self.stopped = True
