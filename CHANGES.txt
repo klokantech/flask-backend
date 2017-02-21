@@ -1,2 +1,3 @@
+v1.2, 2017-02-21 -- Use application context around requests.
 v1.1, 2017-01-11 -- Conform to extension conventions.
 v1.0, 2016-12-21 -- Initial release.
