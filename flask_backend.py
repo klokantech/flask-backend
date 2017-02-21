@@ -74,7 +74,8 @@ class Backend:
         return decorator
 
     def run(self, queue_name):
-        current_app.logger.info('Starting backend %s', queue_name)
+        app = current_app._get_current_object()
+        app.logger.info('Starting backend %s', queue_name)
         for callback in self.before_first_task_callbacks[queue_name]:
             callback()
         handler = self.handlers[queue_name]
@@ -87,9 +88,10 @@ class Backend:
                 task = queue.get(block=False, timeout=8)
             except Empty:
                 continue
-            handler(task)
+            with app.app_context():
+                handler(task)
             queue.task_done()
-        current_app.logger.info('Terminating backend %s', queue_name)
+        app.logger.info('Terminating backend %s', queue_name)
 
     def stop(self, signo=None, frame=None):
         self.stopped = True
