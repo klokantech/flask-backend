@@ -80,8 +80,8 @@ class Backend:
         handler = self.handlers[queue_name]
         queue = self.connection.queue(queue_name)
         self.stopped = False
-        signal(SIGINT, lambda signo, frame: self.stop())
-        signal(SIGTERM, lambda signo, frame: self.stop())
+        signal(SIGINT, self.stop)
+        signal(SIGTERM, self.stop)
         while not self.stopped:
             try:
                 task = queue.get(block=False, timeout=8)
@@ -91,7 +91,7 @@ class Backend:
             queue.task_done()
         current_app.logger.info('Terminating backend %s', queue_name)
 
-    def stop(self):
+    def stop(self, signo=None, frame=None):
         self.stopped = True
 
 
