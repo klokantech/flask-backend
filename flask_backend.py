@@ -107,7 +107,15 @@ class Router:
 
     def __call__(self, task):
         callback = self.callbacks[task['endpoint']]
-        callback(*task['args'], **task['kwargs'])
+        try:
+            args = task['args']
+        except KeyError:
+            args = []
+        try:
+            kwargs = task['kwargs']
+        except KeyError:
+            kwargs = {}
+        callback(*args, **kwargs)
 
 
 @Command
