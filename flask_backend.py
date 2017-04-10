@@ -89,8 +89,12 @@ class Backend:
             except Empty:
                 continue
             with app.app_context():
-                handler(task)
-            queue.task_done()
+                try:
+                    handler(task)
+                except Exception:
+                    app.logger.exception('Exception occured')
+                else:
+                    queue.task_done()
         app.logger.info('Terminating backend %s', queue_name)
 
     def stop(self, signo=None, frame=None):
