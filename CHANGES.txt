@@ -1,3 +1,4 @@
+v1.4, 2017-04-10 -- Log exceptions.
 v1.3, 2017-03-03 -- Fail-safe message parsing.
 v1.2, 2017-02-21 -- Use application context around requests.
 v1.1, 2017-01-11 -- Conform to extension conventions.
