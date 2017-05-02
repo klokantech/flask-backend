@@ -20,13 +20,6 @@ instances. A typical scenario is that you pass a key to a database
 table row as a string or number and the task reads data from the
 database itself.
 
-To send messages to external systems connected to the same Beanstalkd
-server, use the `Backend.send()` method. It expects a queue name and
-a message. To process messages coming from such a system, decorate
-a function with the `Backend.receiver()` decorator and give it the name
-of the queue it is supposed to handle as an argument. This function will
-then be called for each message received from that queue.
-
 To start a backend instance you again specify the queue which it
 will handle. You can use the integration with the `Flask-Script`
 extension for that.
@@ -80,20 +73,13 @@ def index():
 
 
 @backend.before_first_task('com.example/default')
-def initialize_backend():
+def initialize():
     app.logger.info('Initializing backend.')
 
 
 @backend.task('com.example/default')
 def hello(target):
     app.logger.info('Hello, %s!', target)
-    message = {'salutation': 'hello', 'target': target}
-    backend.send('com.external/integrate-with-example', message)
-
-
-@backend.receiver('com.example/integrate-with-external')
-def integrate_with_external(message):
-    app.logger.info('Received message from external system %r', message)
 
 
 manager.add_command('backend', BackendCommand)
@@ -109,5 +95,4 @@ To start the application and the backend instances, run the following commands:
 ```shell
 $ python example.py runserver
 $ python example.py backend com.example/default
-$ python example.py backend com.example/integrate-with-external
 ```

@@ -15,7 +15,7 @@ class Backend:
     def __init__(self, app=None):
         self.connection = None
         self.before_first_task_callbacks = defaultdict(list)
-        self.handlers = {}
+        self.callbacks = defaultdict(dict)
         self.queues = {}
         self.lock = Lock()
         self.stopped = True
@@ -39,20 +39,6 @@ class Backend:
             return callback
         return decorator
 
-    def receiver(self, queue_name):
-        def decorator(callback):
-            self.handlers[queue_name] = callback
-            return callback
-        return decorator
-
-    def send(self, queue_name, message):
-        with self.lock:
-            queue = self.queues.get(queue_name)
-            if queue is None:
-                queue = self.connection.queue(queue_name)
-                self.queues[queue_name] = queue
-            queue.put(message)
-
     def task(self, queue_name, endpoint=None):
         def decorator(callback):
             @wraps(callback)
@@ -65,20 +51,15 @@ class Backend:
             nonlocal endpoint
             if endpoint is None:
                 endpoint = callback.__name__
-            router = self.handlers.get(queue_name)
-            if router is None:
-                router = Router()
-                self.handlers[queue_name] = router
-            router[endpoint] = callback
+            self.callbacks[queue_name][endpoint] = callback
             return wrapper
         return decorator
 
     def run(self, queue_name):
         app = current_app._get_current_object()
-        app.logger.info('Starting backend %s', queue_name)
         for callback in self.before_first_task_callbacks[queue_name]:
             callback()
-        handler = self.handlers[queue_name]
+        app.logger.info('Starting backend %s', queue_name)
         queue = self.connection.queue(queue_name)
         self.stopped = False
         signal(SIGINT, self.stop)
@@ -90,7 +71,7 @@ class Backend:
                 continue
             with app.app_context():
                 try:
-                    handler(task)
+                    self.call(queue_name, task)
                 except Exception:
                     app.logger.exception('Exception occured')
                 else:
@@ -100,17 +81,16 @@ class Backend:
     def stop(self, signo=None, frame=None):
         self.stopped = True
 
+    def send(self, queue_name, task):
+        with self.lock:
+            queue = self.queues.get(queue_name)
+            if queue is None:
+                queue = self.connection.queue(queue_name)
+                self.queues[queue_name] = queue
+            queue.put(task)
 
-class Router:
-
-    def __init__(self):
-        self.callbacks = {}
-
-    def __setitem__(self, endpoint, callback):
-        self.callbacks[endpoint] = callback
-
-    def __call__(self, task):
-        callback = self.callbacks[task['endpoint']]
+    def call(self, queue_name, task):
+        callback = self.callbacks[queue_name][task['endpoint']]
         try:
             args = task['args']
         except KeyError:
