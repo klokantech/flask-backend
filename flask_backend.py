@@ -1,9 +1,8 @@
 import re
 
+from click import Command, Argument
 from cloudwrapper.btq import BtqConnection
 from collections import defaultdict
-from flask import current_app
-from flask_script import Command
 from functools import wraps
 from queue import Empty
 from signal import SIGINT, SIGTERM, signal
@@ -13,6 +12,7 @@ from threading import Lock
 class Backend:
 
     def __init__(self, app=None):
+        self.app = None
         self.connection = None
         self.before_first_task_callbacks = defaultdict(list)
         self.callbacks = defaultdict(dict)
@@ -23,7 +23,13 @@ class Backend:
             self.init_app(app)
 
     def init_app(self, app):
+        self.app = app
         app.extensions['backend'] = self
+        command = Command(
+            'backend',
+            callback=self.run,
+            params=[Argument(['queue_name'])])
+        app.cli.add_command(command)
         match = re.match(
             r'^btq://([-.\w]+)(?::(\d+))?$',
             app.config['BACKEND_CONNECTION_URI'])
@@ -56,10 +62,9 @@ class Backend:
         return decorator
 
     def run(self, queue_name):
-        app = current_app._get_current_object()
         for callback in self.before_first_task_callbacks[queue_name]:
             callback()
-        app.logger.info('Starting backend %s', queue_name)
+        self.app.logger.info('Starting backend %s', queue_name)
         queue = self.connection.queue(queue_name)
         self.stopped = False
         signal(SIGINT, self.stop)
@@ -69,14 +74,14 @@ class Backend:
                 task = queue.get(block=False, timeout=8)
             except Empty:
                 continue
-            with app.app_context():
+            with self.app.app_context():
                 try:
                     self.call(queue_name, task)
                 except Exception:
-                    app.logger.exception('Exception occured')
+                    self.app.logger.exception('Exception occured')
                 else:
                     queue.task_done()
-        app.logger.info('Terminating backend %s', queue_name)
+        self.app.logger.info('Terminating backend %s', queue_name)
 
     def stop(self, signo=None, frame=None):
         self.stopped = True
@@ -100,8 +105,3 @@ class Backend:
         except KeyError:
             kwargs = {}
         callback(*args, **kwargs)
-
-
-@Command
-def BackendCommand(queue_name):
-    current_app.extensions['backend'].run(queue_name)
