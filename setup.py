@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='Flask-Backend',
-    version='1.5',
+    version='1.6',
     description='Asynchronous backend tasks for Flask',
     py_modules=['flask_backend'],
     install_requires=[
