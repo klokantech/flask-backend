@@ -74,7 +74,8 @@ class Backend:
                 task = queue.get(block=False, timeout=8)
             except Empty:
                 continue
-            with self.app.app_context():
+            url = '/{}'.format(task['endpoint'])
+            with self.app.test_request_context(url):
                 try:
                     self.call(queue_name, task)
                 except Exception:
